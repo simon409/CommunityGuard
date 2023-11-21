@@ -1,25 +1,55 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { View, Text, FlatList, StyleSheet } from "react-native";
-import { FAB } from "react-native-paper";
+import { FAB as Fab } from "react-native-paper";
 
 const alerts = [
   {
     id: 1,
     title: "Tornado alert",
-    description: "There is a tornado alert close to your location",
+    description: "There is a tornado close to your location",
     date: "Mon Nov 20 2023",
+    danger: "High",
   },
   {
     id: 2,
+    title: "Fire alert",
+    description: "House on fire close to your location",
+    date: "Mon Nov 27 2023",
+    danger: "Medium",
+  },
+  {
+    id: 3,
     title: "Alert 2",
     description: "This is alert 2",
     date: "Mon Nov 27 2023",
+    danger: "Low",
   },
 ];
 
 function HomeScreen({ navigation }) {
+  const [sortedAlerts, setSortedAlerts] = useState(alerts);
+  useEffect(() => {
+    // Sort the alerts array by dangerconst sortByDanger = () => {
+    const sorted = [...sortedAlerts].sort((a, b) => {
+      if (a.danger === "High") return -1;
+      if (a.danger === "Medium" && b.danger !== "High") return -1;
+      return 1;
+    });
+    setSortedAlerts(sorted);
+  }, [alerts]);
+
   const renderAlert = ({ item }) => (
-    <View style={styles.alertContainer}>
+    <View
+      style={{
+        ...styles.alertContainer,
+        backgroundColor:
+          item.danger === "High"
+            ? "#ff5b00"
+            : item.danger == "Medium"
+            ? "#ffc302"
+            : "lightgrey",
+      }}
+    >
       <Text style={styles.alertTitle}>{item.title}</Text>
       <Text style={styles.alertDescription}>{item.description}</Text>
       <Text style={styles.alertDate}>{item.date}</Text>
@@ -28,16 +58,28 @@ function HomeScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
+      <View>
+        <Text
+          style={{
+            fontSize: 24,
+            fontWeight: "bold",
+            marginBottom: 10,
+            padding: 10,
+          }}
+        >
+          Alerts
+        </Text>
+      </View>
       <FlatList
-        data={alerts}
+        data={sortedAlerts}
         numColumns={2}
         renderItem={renderAlert}
         keyExtractor={(item) => item.id.toString()}
       />
-      <FAB
+      <Fab
         style={styles.fab}
         icon="plus"
-        onPress={() => navigation.navigate("Details")}
+        onPress={() => navigation.navigate("Add Alert")}
       />
     </View>
   );
@@ -53,18 +95,10 @@ const styles = StyleSheet.create({
     flex: 1,
     margin: 10,
     padding: 10,
-    backgroundColor: "#f2f2f2",
     borderRadius: 5,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    elevation: 1,
   },
   alertImage: {
     width: 100,
@@ -83,7 +117,7 @@ const styles = StyleSheet.create({
   },
   alertDate: {
     fontSize: 12,
-    color: "#888",
+    color: "#000",
   },
   fab: {
     position: "absolute",
