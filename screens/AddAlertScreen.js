@@ -5,7 +5,7 @@ import { AnimatedMapView } from "react-native-maps/lib/MapView";
 import { MarkerAnimated } from "react-native-maps";
 import * as Location from "expo-location";
 import { db } from "../config";
-import { ref, set, push } from "firebase/database";
+import { ref, push } from "firebase/database";
 
 const AddAlertScreen = () => {
   const [alertText, setAlertText] = useState("");

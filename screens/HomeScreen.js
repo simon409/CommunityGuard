@@ -3,6 +3,7 @@ import { View, Text, FlatList, StyleSheet } from "react-native";
 import { FAB as Fab } from "react-native-paper";
 import { db } from "../config";
 import { ref, onValue } from "firebase/database";
+import * as Location from "expo-location";
 
 function HomeScreen({ navigation }) {
   const [sortedAlerts, setSortedAlerts] = useState([]);
@@ -10,7 +11,7 @@ function HomeScreen({ navigation }) {
 
   useEffect(() => {
     const alertsRef = ref(db, "alerts");
-    onValue(alertsRef, (snapshot) => {
+    onValue(alertsRef, async (snapshot) => {
       const data = snapshot.val();
       if (data) {
         const alerts = Object.values(data);
@@ -19,11 +20,79 @@ function HomeScreen({ navigation }) {
           if (a.danger === "Medium" && b.danger !== "High") return -1;
           return 1;
         });
-        setSortedAlerts(sorted);
+
+        // Filter alerts based on user's location
+        const filteredAlerts = await Promise.all(
+          sorted.map(async (alert) => {
+            const userLocation = await getUserLocation(); // Get user's location
+            const alertLocation = {
+              latitude: alert.latitude,
+              longitude: alert.longitude,
+            };
+            const distance = calculateHaversineDistance(
+              userLocation,
+              alertLocation
+            );
+            const maxDistance = 200; // Maximum distance in meters
+
+            console.log(distance);
+
+            return distance <= maxDistance ? alert : null;
+          })
+        );
+
+        const finalAlerts = filteredAlerts.filter((alert) => alert !== null);
+        console.log(finalAlerts);
+        setSortedAlerts(finalAlerts);
         setLoading(false); // Set loading to false after data is fetched
       }
     });
   }, []);
+
+  // Function to convert degrees to radians
+  const toRadians = (degrees) => {
+    return degrees * (Math.PI / 180);
+  };
+
+  // Haversine formula to calculate distance between two points on the Earth
+  const calculateHaversineDistance = (coord1, coord2) => {
+    const R = 6371000; // Radius of the Earth in meters
+
+    const lat1 = toRadians(coord1.latitude);
+    const lon1 = toRadians(coord1.longitude);
+    const lat2 = toRadians(coord2.latitude);
+    const lon2 = toRadians(coord2.longitude);
+
+    const dLat = lat2 - lat1;
+    const dLon = lon2 - lon1;
+
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    const distance = R * c; // Distance in meters
+
+    return distance;
+  };
+
+  const getUserLocation = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        console.log("Permission to access location was denied");
+        return;
+      }
+
+      const { coords } = await Location.getCurrentPositionAsync();
+      const { latitude, longitude } = coords;
+
+      return { latitude, longitude };
+    } catch (error) {
+      console.log("Error getting location", error);
+    }
+  };
 
   const renderAlert = ({ item }) => (
     <View
