@@ -1,42 +1,29 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, FlatList, StyleSheet } from "react-native";
 import { FAB as Fab } from "react-native-paper";
-
-const alerts = [
-  {
-    id: 1,
-    title: "Tornado alert",
-    description: "There is a tornado close to your location",
-    date: "Mon Nov 20 2023",
-    danger: "High",
-  },
-  {
-    id: 2,
-    title: "Fire alert",
-    description: "House on fire close to your location",
-    date: "Mon Nov 27 2023",
-    danger: "Medium",
-  },
-  {
-    id: 3,
-    title: "Alert 2",
-    description: "This is alert 2",
-    date: "Mon Nov 27 2023",
-    danger: "Low",
-  },
-];
+import { db } from "../config";
+import { ref, onValue } from "firebase/database";
 
 function HomeScreen({ navigation }) {
-  const [sortedAlerts, setSortedAlerts] = useState(alerts);
+  const [sortedAlerts, setSortedAlerts] = useState([]);
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
-    // Sort the alerts array by dangerconst sortByDanger = () => {
-    const sorted = [...sortedAlerts].sort((a, b) => {
-      if (a.danger === "High") return -1;
-      if (a.danger === "Medium" && b.danger !== "High") return -1;
-      return 1;
+    const alertsRef = ref(db, "alerts");
+    onValue(alertsRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const alerts = Object.values(data);
+        const sorted = [...alerts].sort((a, b) => {
+          if (a.danger === "High") return -1;
+          if (a.danger === "Medium" && b.danger !== "High") return -1;
+          return 1;
+        });
+        setSortedAlerts(sorted);
+        setLoading(false); // Set loading to false after data is fetched
+      }
     });
-    setSortedAlerts(sorted);
-  }, [alerts]);
+  }, []);
 
   const renderAlert = ({ item }) => (
     <View
@@ -45,16 +32,27 @@ function HomeScreen({ navigation }) {
         backgroundColor:
           item.danger === "High"
             ? "#ff5b00"
-            : item.danger == "Medium"
+            : item.danger === "Medium"
             ? "#ffc302"
             : "lightgrey",
       }}
     >
       <Text style={styles.alertTitle}>{item.title}</Text>
       <Text style={styles.alertDescription}>{item.description}</Text>
-      <Text style={styles.alertDate}>{item.date}</Text>
+      <Text style={styles.alertDate}>
+        {new Date(item.date).toUTCString().substring(0, 16)}
+      </Text>
     </View>
   );
+
+  if (loading) {
+    // Render a loading indicator or placeholder
+    return (
+      <View style={styles.container}>
+        <Text>Loading...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -74,7 +72,7 @@ function HomeScreen({ navigation }) {
         data={sortedAlerts}
         numColumns={2}
         renderItem={renderAlert}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={(item) => item.id}
       />
       <Fab
         style={styles.fab}

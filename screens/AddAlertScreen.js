@@ -4,6 +4,8 @@ import React, { useState, useEffect } from "react";
 import { AnimatedMapView } from "react-native-maps/lib/MapView";
 import { MarkerAnimated } from "react-native-maps";
 import * as Location from "expo-location";
+import { db } from "../config";
+import { ref, set, push } from "firebase/database";
 
 const AddAlertScreen = () => {
   const [alertText, setAlertText] = useState("");
@@ -51,18 +53,18 @@ const AddAlertScreen = () => {
   };
 
   const handleAddAlert = () => {
-    // Logic to add the alert with the entered text and selected location
-    // For example:
-    // const alert = {
-    //   text: alertText,
-    //   latitude: latitude,
-    //   longitude: longitude,
-    // };
-    // Add the alert to your data source or make an API call to save it
-    // Reset the form fields and state variables
-    // setAlertText("");
-    // setLatitude(null);
-    // setLongitude(null);
+    console.log("Add alert");
+    push(ref(db, "alerts/"), {
+      title: alertText,
+      description: alertDescription,
+      danger: alertDanger,
+      date: alertDate,
+      latitude: latitude,
+      longitude: longitude,
+    });
+    setAlertText("");
+    setAlertDescription("");
+    setAlertDanger("Low");
   };
 
   return (
