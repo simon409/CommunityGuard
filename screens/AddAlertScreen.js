@@ -12,11 +12,13 @@ const AddAlertScreen = () => {
   const [alertDescription, setAlertDescription] = useState("");
   const [alertDanger, setAlertDanger] = useState("Low");
   const [alertDate, setAlertDate] = useState(new Date().toISOString());
-  const [latitude, setLatitude] = useState(33.2593013);
-  const [longitude, setLongitude] = useState(-8.5122506);
+  const [latitude, setLatitude] = useState(48.858844);
+  const [longitude, setLongitude] = useState(2.29435);
 
   useEffect(() => {
     getLocation();
+
+    console.log("Get location");
   }, []);
 
   const getLocation = async () => {
@@ -96,11 +98,11 @@ const AddAlertScreen = () => {
 
       <View style={styles.buttons}>
         <AnimatedMapView
-          initialRegion={{
+          region={{
             latitude: latitude,
             longitude: longitude,
-            latitudeDelta: 0.0922,
-            longitudeDelta: 0.0421,
+            latitudeDelta: 0.01,
+            longitudeDelta: 0.01,
           }}
           onPress={handleLocationSelect}
           style={{ width: "100%", height: 300 }}
