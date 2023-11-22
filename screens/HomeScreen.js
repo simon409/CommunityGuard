@@ -1,19 +1,19 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, FlatList, StyleSheet } from "react-native";
 import Dialog from "react-native-dialog";
-import { FAB as Fab, Portal, PaperProvider } from "react-native-paper";
+import { FAB as Fab, Portal, PaperProvider, Button } from "react-native-paper";
 import { db } from "../config";
 import { ref, onValue } from "firebase/database";
 import * as Location from "expo-location";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Button } from "react-native-paper";
+
 function HomeScreen({ navigation }) {
   const [sortedAlerts, setSortedAlerts] = useState([]);
+  const [Data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [maxDistance, setmaxDistance] = useState(300);
   const [maxDistanceEntered, setmaxDistanceEntered] = useState(0);
   const [IsDialogVisible, setIsDialogVisible] = useState(true);
-  const [reload, setReload] = useState(false);
   const [state, setState] = React.useState({ open: false });
 
   const onStateChange = ({ open }) => setState({ open });
@@ -24,9 +24,7 @@ function HomeScreen({ navigation }) {
     // Use `setOptions` to update the button that we previously specified
     // Now the button includes an `onPress` handler to update the count
     navigation.setOptions({
-      headerRight: () => (
-        <Button onPress={() => setReload(true)} icon="reload"></Button>
-      ),
+      headerRight: () => <Button onPress={refreshData} icon="reload"></Button>,
     });
   }, [navigation]);
 
@@ -43,63 +41,67 @@ function HomeScreen({ navigation }) {
           return 1;
         });
         console.log("entred filtering");
-
-        // Filter alerts based on user's location
-        const filteredAlerts = await Promise.all(
-          sorted.map(async (alert) => {
-            return await filterdatabydistance(alert);
-          })
-        );
-        if (filteredAlerts.length > 0) {
-          console.log("entred filtered");
-
-          const finalAlerts = filteredAlerts.filter((alert) => alert !== null);
-          console.log(finalAlerts);
-          setSortedAlerts(finalAlerts);
-          console.log("done");
-        }
-
-        setLoading(false); // Set loading to false after data is fetched
-        if (reload) {
-          setReload(false);
-        }
+        setData(sorted);
       }
     });
-  }, [maxDistance, reload]);
+  }, [maxDistance]);
 
   useEffect(() => {
-    async function CheckStorage() {
-      try {
-        const value = await AsyncStorage.getItem("maxDistance");
-        if (value !== null) {
-          setmaxDistance(value);
-          setIsDialogVisible(false);
-        }
-      } catch (e) {
-        console.log(e);
-      }
-    }
+    refreshData();
+  }, [Data]);
 
+  const refreshData = async () => {
     CheckStorage();
-  }, []);
+    // Filter alerts based on user's location
+    if (Data) {
+      const filteredAlerts = await Promise.all(
+        Data.map(async (alert) => {
+          const filteredAlert = await filterdatabydistance(alert);
+          return filteredAlert ? alert : null;
+        })
+      );
+      console.log(filteredAlerts);
+      const finalAlerts = filteredAlerts.filter((alert) => alert !== null);
+      setSortedAlerts(finalAlerts);
+      console.log(finalAlerts);
+      setLoading(false); // Set loading to false after data is fetched
+    } else {
+      console.log("no data");
+    }
+  };
 
-  const filterdatabydistance = async (alerts) => {
+  const filterdatabydistance = async (alert) => {
     try {
+      console.log("entred filterdatabydistance");
       const userLocation = await getUserLocation(); // Get user's location
       const alertLocation = {
-        latitude: alerts.latitude,
-        longitude: alerts.longitude,
+        latitude: alert.latitude,
+        longitude: alert.longitude,
       };
       const distance = calculateHaversineDistance(userLocation, alertLocation);
-      console.log(distance);
+      console.log(distance <= maxDistance);
 
-      return distance <= maxDistance ? alerts : null;
+      return distance <= maxDistance ? alert : null;
     } catch (error) {
       console.log(error);
       return null;
     }
   };
+  useEffect(() => {
+    CheckStorage();
+  }, [Data]);
 
+  async function CheckStorage() {
+    try {
+      const value = await AsyncStorage.getItem("maxDistance");
+      if (value !== null) {
+        setmaxDistance(value);
+        setIsDialogVisible(false);
+      }
+    } catch (e) {
+      console.log(e);
+    }
+  }
   // Function to convert degrees to radians
   const toRadians = (degrees) => {
     return degrees * (Math.PI / 180);
@@ -184,6 +186,33 @@ function HomeScreen({ navigation }) {
     );
   }
 
+  const displayList = () => {
+    if (!sortedAlerts) {
+      return (
+        <View>
+          <Text>Loading...</Text>
+        </View>
+      );
+    } else {
+      if (sortedAlerts.length > 0) {
+        return (
+          <FlatList
+            data={sortedAlerts}
+            numColumns={2}
+            renderItem={renderAlert}
+            keyExtractor={(item) => item.id}
+          />
+        );
+      } else {
+        return (
+          <View>
+            <Text>No alerts found</Text>
+          </View>
+        );
+      }
+    }
+  };
+
   return (
     <View style={styles.container}>
       <Dialog.Container visible={IsDialogVisible}>
@@ -209,12 +238,7 @@ function HomeScreen({ navigation }) {
           Alerts
         </Text>
       </View>
-      <FlatList
-        data={sortedAlerts}
-        numColumns={2}
-        renderItem={renderAlert}
-        keyExtractor={(item) => item.id}
-      />
+      {displayList()}
       <PaperProvider>
         <Portal>
           <Fab.Group

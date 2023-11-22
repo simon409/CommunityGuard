@@ -34,8 +34,8 @@ const Settings = () => {
       <TextInput
         style={styles.input}
         placeholder="Enter max distance"
-        value={maxDistance}
-        onChangeText={setMaxDistance}
+        onChangeText={(text) => setMaxDistance(text)}
+        value={maxDistance.toString()}
       />
       <Button mode="elevated" onPress={handleMaxDistanceChange}>
         Save
