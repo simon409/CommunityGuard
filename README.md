@@ -66,6 +66,7 @@ Here are some future ideas for the CommunityGuard app:
 2. Explore the map to view safety incidents reported by other users.
 3. Report a safety incident by tapping on the "Report" button and providing the necessary details.
 4. Share safety incidents with your community by posting them on social media.
+5. Pushing notifications on nearby alerts.
 
 ## License
 

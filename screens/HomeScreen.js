@@ -1,18 +1,40 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, FlatList, StyleSheet } from "react-native";
-import { FAB as Fab } from "react-native-paper";
+import Dialog from "react-native-dialog";
+import { FAB as Fab, Portal, PaperProvider } from "react-native-paper";
 import { db } from "../config";
 import { ref, onValue } from "firebase/database";
 import * as Location from "expo-location";
-
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Button } from "react-native-paper";
 function HomeScreen({ navigation }) {
   const [sortedAlerts, setSortedAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [maxDistance, setmaxDistance] = useState(300);
+  const [maxDistanceEntered, setmaxDistanceEntered] = useState(0);
+  const [IsDialogVisible, setIsDialogVisible] = useState(true);
+  const [reload, setReload] = useState(false);
+  const [state, setState] = React.useState({ open: false });
+
+  const onStateChange = ({ open }) => setState({ open });
+
+  const { open } = state;
+
+  React.useEffect(() => {
+    // Use `setOptions` to update the button that we previously specified
+    // Now the button includes an `onPress` handler to update the count
+    navigation.setOptions({
+      headerRight: () => (
+        <Button onPress={() => setReload(true)} icon="reload"></Button>
+      ),
+    });
+  }, [navigation]);
 
   useEffect(() => {
     const alertsRef = ref(db, "alerts");
     onValue(alertsRef, async (snapshot) => {
       const data = snapshot.val();
+      console.log("entred on value");
       if (data) {
         const alerts = Object.values(data);
         const sorted = [...alerts].sort((a, b) => {
@@ -20,34 +42,63 @@ function HomeScreen({ navigation }) {
           if (a.danger === "Medium" && b.danger !== "High") return -1;
           return 1;
         });
+        console.log("entred filtering");
 
         // Filter alerts based on user's location
         const filteredAlerts = await Promise.all(
           sorted.map(async (alert) => {
-            const userLocation = await getUserLocation(); // Get user's location
-            const alertLocation = {
-              latitude: alert.latitude,
-              longitude: alert.longitude,
-            };
-            const distance = calculateHaversineDistance(
-              userLocation,
-              alertLocation
-            );
-            const maxDistance = 200; // Maximum distance in meters
-
-            console.log(distance);
-
-            return distance <= maxDistance ? alert : null;
+            return await filterdatabydistance(alert);
           })
         );
+        if (filteredAlerts.length > 0) {
+          console.log("entred filtered");
 
-        const finalAlerts = filteredAlerts.filter((alert) => alert !== null);
-        console.log(finalAlerts);
-        setSortedAlerts(finalAlerts);
+          const finalAlerts = filteredAlerts.filter((alert) => alert !== null);
+          console.log(finalAlerts);
+          setSortedAlerts(finalAlerts);
+          console.log("done");
+        }
+
         setLoading(false); // Set loading to false after data is fetched
+        if (reload) {
+          setReload(false);
+        }
       }
     });
+  }, [maxDistance, reload]);
+
+  useEffect(() => {
+    async function CheckStorage() {
+      try {
+        const value = await AsyncStorage.getItem("maxDistance");
+        if (value !== null) {
+          setmaxDistance(value);
+          setIsDialogVisible(false);
+        }
+      } catch (e) {
+        console.log(e);
+      }
+    }
+
+    CheckStorage();
   }, []);
+
+  const filterdatabydistance = async (alerts) => {
+    try {
+      const userLocation = await getUserLocation(); // Get user's location
+      const alertLocation = {
+        latitude: alerts.latitude,
+        longitude: alerts.longitude,
+      };
+      const distance = calculateHaversineDistance(userLocation, alertLocation);
+      console.log(distance);
+
+      return distance <= maxDistance ? alerts : null;
+    } catch (error) {
+      console.log(error);
+      return null;
+    }
+  };
 
   // Function to convert degrees to radians
   const toRadians = (degrees) => {
@@ -94,6 +145,16 @@ function HomeScreen({ navigation }) {
     }
   };
 
+  const HandelDistanceChange = async () => {
+    await AsyncStorage.setItem("maxDistance", maxDistanceEntered);
+    setIsDialogVisible(false);
+  };
+
+  const HandelCancel = async () => {
+    setIsDialogVisible(false);
+    await AsyncStorage.setItem("maxDistance", maxDistance);
+  };
+
   const renderAlert = ({ item }) => (
     <View
       style={{
@@ -125,6 +186,17 @@ function HomeScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
+      <Dialog.Container visible={IsDialogVisible}>
+        <Dialog.Title>
+          Write here your desired distance in meters (default: 300m)
+        </Dialog.Title>
+        <Dialog.Input
+          placeholder="Distance in meters"
+          onChange={(e) => setmaxDistanceEntered(e.nativeEvent.text)}
+        ></Dialog.Input>
+        <Dialog.Button label="Cancel" onPress={HandelCancel} />
+        <Dialog.Button label="Confirm" onPress={HandelDistanceChange} />
+      </Dialog.Container>
       <View>
         <Text
           style={{
@@ -143,11 +215,28 @@ function HomeScreen({ navigation }) {
         renderItem={renderAlert}
         keyExtractor={(item) => item.id}
       />
-      <Fab
-        style={styles.fab}
-        icon="plus"
-        onPress={() => navigation.navigate("Add Alert")}
-      />
+      <PaperProvider>
+        <Portal>
+          <Fab.Group
+            open={open}
+            visible
+            icon={open ? "close" : "menu"}
+            actions={[
+              {
+                icon: "plus",
+                label: "Add Alert",
+                onPress: () => navigation.navigate("Add Alert"),
+              },
+              {
+                icon: "cog-outline",
+                label: "Settings",
+                onPress: () => navigation.navigate("Settings"),
+              },
+            ]}
+            onStateChange={onStateChange}
+          />
+        </Portal>
+      </PaperProvider>
     </View>
   );
 }

@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, TextInput, Button } from "react-native";
+import { StyleSheet, Text, View, TextInput } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import React, { useState, useEffect } from "react";
 import { AnimatedMapView } from "react-native-maps/lib/MapView";
@@ -6,6 +6,7 @@ import { MarkerAnimated } from "react-native-maps";
 import * as Location from "expo-location";
 import { db } from "../config";
 import { ref, push } from "firebase/database";
+import { Button } from "react-native-paper";
 
 const AddAlertScreen = () => {
   const [alertText, setAlertText] = useState("");
@@ -71,7 +72,7 @@ const AddAlertScreen = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>Alert Text:</Text>
+      <Text style={styles.label}>Alert Infos:</Text>
       <TextInput
         style={styles.input}
         value={alertText}
@@ -114,11 +115,9 @@ const AddAlertScreen = () => {
             }}
           />
         </AnimatedMapView>
-        <Button
-          title="Add Alert"
-          onPress={handleAddAlert}
-          style={styles.button}
-        />
+        <Button mode="contained" onPress={handleAddAlert}>
+          Add Alert
+        </Button>
       </View>
     </View>
   );
@@ -128,6 +127,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
+    backgroundColor: "#fff",
   },
   label: {
     fontSize: 16,
@@ -140,20 +140,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginBottom: 16,
     paddingHorizontal: 8,
+    borderRadius: 5,
   },
   buttons: {
     flexDirection: "column",
     gap: 8,
-  },
-  button: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#2196F3",
-    padding: 8,
-    borderRadius: 8,
-    elevation: 0,
-    shadowOpacity: 0,
   },
   picker: {
     marginBottom: 8,
